@@ -20,8 +20,8 @@ public class PersonService {
         return (List<Person>) personRepository.findAll();
     }
 
-    public void save(Person person) {
-        personRepository.save(person);
+    public Person save(Person person) {
+        return personRepository.save(person);
     }
 
     public Optional<Person> findByName(String name) {
@@ -34,5 +34,9 @@ public class PersonService {
 
     public void deleteById(long id) {
         personRepository.deleteById(id);
+    }
+
+    public Optional<Person> findById(long id) {
+        return personRepository.findById(id);
     }
 }
