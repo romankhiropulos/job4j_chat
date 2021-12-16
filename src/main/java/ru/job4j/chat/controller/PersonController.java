@@ -21,7 +21,7 @@ public class PersonController {
     }
 
     @GetMapping("/")
-    public List<Person> getAll() {
+    public List<Person> findAll() {
         return StreamSupport.stream(
                 this.personService.getAll().spliterator(), false
         ).collect(Collectors.toList());
@@ -51,7 +51,7 @@ public class PersonController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable long id) {
+    public ResponseEntity<Void> deleteById(@PathVariable long id) {
         this.personService.deleteById(id);
         return ResponseEntity.ok().build();
     }

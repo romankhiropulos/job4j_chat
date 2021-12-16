@@ -4,9 +4,7 @@ import org.springframework.stereotype.Service;
 import ru.job4j.chat.model.Message;
 import ru.job4j.chat.repository.MessageRepository;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class MessageService {
@@ -17,9 +15,9 @@ public class MessageService {
         this.messageRepository = messageRepository;
     }
 
-    public void add(Message message) {
+    public Message save(Message message) {
         message.setCreated(new Date(System.currentTimeMillis()));
-        messageRepository.save(message);
+        return messageRepository.save(message);
     }
 
     public void delete(Message message) {
@@ -30,7 +28,15 @@ public class MessageService {
         return messageRepository.findById(id);
     }
 
-    public List<Message> findMessagesByRoomId(long postId) {
-        return messageRepository.findMessagesByRoomId(postId);
+    public Optional<List<Message>> findAll() {
+        return Optional.of((List<Message>) messageRepository.findAll());
+    }
+
+    public Optional<List<Message>> findByRoom(long id) {
+        Optional<List<Message>> messages = messageRepository.findByRoomId(id);
+        messages.ifPresent(
+                messageList ->  messageList.sort(Comparator.comparing(Message::getCreated).reversed())
+        );
+        return messages;
     }
 }
