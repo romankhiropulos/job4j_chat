@@ -40,7 +40,7 @@ public class MessageController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/room/{id}")
     public ResponseEntity<List<Message>> findByRoom(@PathVariable long id) {
         var messages = this.messageService.findByRoom(id);
         return new ResponseEntity<List<Message>>(
