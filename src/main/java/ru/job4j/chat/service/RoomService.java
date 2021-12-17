@@ -1,9 +1,11 @@
 package ru.job4j.chat.service;
 
 import org.springframework.stereotype.Service;
+import ru.job4j.chat.model.Message;
 import ru.job4j.chat.model.Room;
 import ru.job4j.chat.repository.RoomRepository;
 
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -17,16 +19,16 @@ public class RoomService {
         this.roomRepository = roomRepository;
     }
 
-    public void save(Room room) {
+    public Room save(Room room) {
         Optional<Room> roomFromDb = roomRepository.findById(room.getId());
         if (roomFromDb.isEmpty()) {
             room.setCreated(new Date(System.currentTimeMillis()));
-            roomRepository.save(room);
+            return roomRepository.save(room);
         } else {
             Room updatableRoom = roomFromDb.get();
             updatableRoom.setDescription(room.getDescription());
             updatableRoom.setName(room.getName());
-            roomRepository.save(updatableRoom);
+            return roomRepository.save(updatableRoom);
         }
     }
 
@@ -34,12 +36,20 @@ public class RoomService {
         roomRepository.deleteById(id);
     }
 
-    public List<Room> getAll() {
-        return (List<Room>) roomRepository.findAll();
+    public Optional<List<Room>> findAll() {
+        return Optional.of((List<Room>) roomRepository.findAll());
     }
 
     public Optional<Room> findById(long id) {
         return roomRepository.findById(id);
+    }
+
+    public Optional<List<Room>> findByPerson(long id) {
+        Optional<List<Room>> rooms = roomRepository.findByPersonId(id);
+        rooms.ifPresent(
+                roomList ->  roomList.sort(Comparator.comparing(Room::getCreated).reversed())
+        );
+        return rooms;
     }
 
     public void delete(Room room) {
