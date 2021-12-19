@@ -12,8 +12,11 @@ public class PersonService {
 
     private final PersonRepository personRepository;
 
-    public PersonService(PersonRepository personRepository) {
+    private final RoleService roleService;
+
+    public PersonService(PersonRepository personRepository, RoleService roleService) {
         this.personRepository = personRepository;
+        this.roleService = roleService;
     }
 
     public List<Person> getAll() {
@@ -21,6 +24,8 @@ public class PersonService {
     }
 
     public Person save(Person person) {
+        person.setEnabled(true);
+        roleService.findByRole("ROLE_USER").ifPresent(person::setRole);
         return personRepository.save(person);
     }
 
