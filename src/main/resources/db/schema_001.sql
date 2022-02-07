@@ -24,7 +24,7 @@ CREATE TABLE room
     name        VARCHAR(2000),
     description TEXT,
     created     TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(),
-    person_id     BIGINT                      NOT NULL REFERENCES person (id)
+    person_id   BIGINT                      NOT NULL REFERENCES person (id)
 );
 
 CREATE TABLE message

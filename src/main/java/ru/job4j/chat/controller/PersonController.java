@@ -1,13 +1,22 @@
 package ru.job4j.chat.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import ru.job4j.chat.model.Person;
 import ru.job4j.chat.service.PersonService;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -15,17 +24,28 @@ import java.util.stream.StreamSupport;
 @RequestMapping("/person")
 public class PersonController {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(PersonController.class.getSimpleName());
+
     private final PersonService personService;
 
     private final BCryptPasswordEncoder encoder;
 
-    public PersonController(final PersonService personService, BCryptPasswordEncoder encoder) {
+    private final ObjectMapper objectMapper;
+
+    public PersonController(final PersonService personService,
+                                  BCryptPasswordEncoder encoder,
+                                  ObjectMapper objectMapper) {
         this.personService = personService;
         this.encoder = encoder;
+        this.objectMapper = objectMapper;
     }
 
     @PostMapping("/sign-up")
     public void signUp(@RequestBody Person person) {
+        validatePerson(person);
+        if (person.getPassword().length() < 6) {
+            throw new IllegalArgumentException("Too short password");
+        }
         person.setPassword(encoder.encode(person.getPassword()));
         personService.save(person);
     }
@@ -39,15 +59,15 @@ public class PersonController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Person> findById(@PathVariable long id) {
-        var person = this.personService.findById(id);
-        return new ResponseEntity<>(
-                person.orElse(new Person()),
-                person.isPresent() ? HttpStatus.OK : HttpStatus.NOT_FOUND
-        );
+        var person = this.personService.findById(id).orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "Account is not found. Please, check request."
+        ));
+        return new ResponseEntity<>(person, HttpStatus.OK);
     }
 
     @PostMapping("/")
     public ResponseEntity<Person> create(@RequestBody Person person) {
+        validatePerson(person);
         return new ResponseEntity<>(
                 this.personService.save(person),
                 HttpStatus.CREATED
@@ -56,6 +76,7 @@ public class PersonController {
 
     @PutMapping("/")
     public ResponseEntity<Void> update(@RequestBody Person person) {
+        validatePerson(person);
         this.personService.save(person);
         return ResponseEntity.ok().build();
     }
@@ -64,5 +85,29 @@ public class PersonController {
     public ResponseEntity<Void> deleteById(@PathVariable long id) {
         this.personService.deleteById(id);
         return ResponseEntity.ok().build();
+    }
+
+    @ExceptionHandler(value = { IllegalArgumentException.class })
+    public void exceptionHandler(Exception e, HttpServletRequest request, HttpServletResponse response) throws IOException {
+        response.setStatus(HttpStatus.BAD_REQUEST.value());
+        response.setContentType("application/json");
+        response.getWriter().write(objectMapper.writeValueAsString(new HashMap<>() { {
+            put("message", e.getMessage());
+            put("type", e.getClass());
+        }}));
+        LOGGER.error(e.getLocalizedMessage());
+    }
+
+    private void validatePerson(Person person) throws NullPointerException {
+        String errMsg = "Username and password must not be empty";
+        String name = person.getName();
+        String password = person.getPassword();
+        Objects.requireNonNull(password, errMsg);
+        Objects.requireNonNull(name, errMsg);
+        name = name.strip();
+        password = password.strip();
+        if (Objects.equals(name, "") || Objects.equals(password, "")) {
+            throw new NullPointerException(errMsg);
+        }
     }
 }
