@@ -33,8 +33,8 @@ public class PersonController {
     private final ObjectMapper objectMapper;
 
     public PersonController(final PersonService personService,
-                                  BCryptPasswordEncoder encoder,
-                                  ObjectMapper objectMapper) {
+                            BCryptPasswordEncoder encoder,
+                            ObjectMapper objectMapper) {
         this.personService = personService;
         this.encoder = encoder;
         this.objectMapper = objectMapper;
@@ -51,10 +51,12 @@ public class PersonController {
     }
 
     @GetMapping("/all")
-    public List<Person> findAll() {
-        return StreamSupport.stream(
-                this.personService.getAll().spliterator(), false
-        ).collect(Collectors.toList());
+    public ResponseEntity<List<Person>> findAll() {
+        var persons = StreamSupport.stream(this.personService.getAll().spliterator(), false)
+                .collect(Collectors.toList());
+        return ResponseEntity.status(persons.size() != 0 ? HttpStatus.OK : HttpStatus.NOT_FOUND)
+                .header("Job4jHeader", "job4j")
+                .body(persons);
     }
 
     @GetMapping("/{id}")
@@ -87,14 +89,16 @@ public class PersonController {
         return ResponseEntity.ok().build();
     }
 
-    @ExceptionHandler(value = { IllegalArgumentException.class })
+    @ExceptionHandler(value = {IllegalArgumentException.class})
     public void exceptionHandler(Exception e, HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.setStatus(HttpStatus.BAD_REQUEST.value());
         response.setContentType("application/json");
-        response.getWriter().write(objectMapper.writeValueAsString(new HashMap<>() { {
-            put("message", e.getMessage());
-            put("type", e.getClass());
-        }}));
+        response.getWriter().write(objectMapper.writeValueAsString(new HashMap<>() {
+            {
+                put("message", e.getMessage());
+                put("type", e.getClass());
+            }
+        }));
         LOGGER.error(e.getLocalizedMessage());
     }
 
