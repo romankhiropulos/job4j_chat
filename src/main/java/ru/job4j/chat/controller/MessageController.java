@@ -1,14 +1,18 @@
 package ru.job4j.chat.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import ru.job4j.chat.model.Message;
 import ru.job4j.chat.service.MessageService;
 
+import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @RestController
@@ -17,8 +21,12 @@ public class MessageController {
 
     private final MessageService messageService;
 
-    public MessageController(MessageService messageService) {
+    private final ObjectMapper objectMapper;
+
+    public MessageController(MessageService messageService,
+                             ObjectMapper objectMapper) {
         this.messageService = messageService;
+        this.objectMapper = objectMapper;
     }
 
     @PostMapping("/")
@@ -34,6 +42,20 @@ public class MessageController {
     public ResponseEntity<Void> update(@RequestBody Message message) {
         validateMessage(message);
         this.messageService.save(message);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<Void> modify(@PathVariable long id, @RequestBody Map<Object, Object> messageFields) {
+        Message entityToPatch = messageService.findById(id).orElseThrow(
+                () -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Messages is not found. Please, check request."
+                )
+        );
+        patch(entityToPatch, messageFields);
+        validateMessage(entityToPatch);
+        this.messageService.save(entityToPatch);
         return ResponseEntity.ok().build();
     }
 
@@ -78,6 +100,33 @@ public class MessageController {
         text = text.strip();
         if (Objects.equals(text, "")) {
             throw new NullPointerException(errMsg);
+        }
+    }
+
+    private void patch(Message entityToPatch, Map<Object, Object> messageFields) {
+        for (Map.Entry<Object, Object> entry : messageFields.entrySet()) {
+            Field field = ReflectionUtils.findField(Message.class, (String) entry.getKey());
+            if (field != null) {
+                field.setAccessible(true);
+                switch (field.getType().getTypeName()) {
+                    case ("int"):
+                        ReflectionUtils.setField(field, entityToPatch, Integer.valueOf((String) entry.getValue()));
+                        break;
+                    case ("long"):
+                        ReflectionUtils.setField(field, entityToPatch, Long.valueOf((String) entry.getValue()));
+                        break;
+                    default:
+                        Class<?> theClass = null;
+                        try {
+                            theClass = Class.forName(field.getType().getTypeName());
+                        } catch (ClassNotFoundException e) {
+                            throw new IllegalArgumentException("Type cast exception!");
+                        }
+                        Object obj = Objects.requireNonNull(theClass).cast(entry.getValue());
+                        ReflectionUtils.setField(field, entityToPatch, obj);
+                        break;
+                }
+            }
         }
     }
 }

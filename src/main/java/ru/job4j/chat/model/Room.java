@@ -1,6 +1,5 @@
 package ru.job4j.chat.model;
 
-
 import javax.persistence.*;
 import java.util.ArrayList;
 import java.util.Date;

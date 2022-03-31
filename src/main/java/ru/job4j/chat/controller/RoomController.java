@@ -1,9 +1,12 @@
 package ru.job4j.chat.controller;
 
+import org.mapstruct.factory.Mappers;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import ru.job4j.chat.dto.RoomDTO;
+import ru.job4j.chat.mapper.RoomDTOMapper;
 import ru.job4j.chat.model.Room;
 import ru.job4j.chat.service.RoomService;
 
@@ -14,6 +17,8 @@ import java.util.Objects;
 @RestController
 @RequestMapping("/room")
 public class RoomController {
+
+    private final RoomDTOMapper mapper = Mappers.getMapper(RoomDTOMapper.class);
 
     private final RoomService roomService;
 
@@ -34,6 +39,14 @@ public class RoomController {
     public ResponseEntity<Void> update(@RequestBody Room room) {
         validateRoom(room);
         this.roomService.save(room);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/")
+    public ResponseEntity<Void> modify(@RequestBody RoomDTO room) {
+        Room entityToPatch = mapper.sourceToDestination(room);
+        validateRoom(entityToPatch);
+        this.roomService.save(entityToPatch);
         return ResponseEntity.ok().build();
     }
 

@@ -14,6 +14,8 @@ import ru.job4j.chat.service.PersonService;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
@@ -83,6 +85,15 @@ public class PersonController {
         return ResponseEntity.ok().build();
     }
 
+    @PatchMapping("/")
+    public ResponseEntity<Void> modify(@RequestBody Person source)
+            throws InvocationTargetException, IllegalAccessException {
+        Person destination = match(source);
+        validatePerson(destination);
+        this.personService.save(destination);
+        return ResponseEntity.ok().build();
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteById(@PathVariable long id) {
         this.personService.deleteById(id);
@@ -113,5 +124,33 @@ public class PersonController {
         if (Objects.equals(name, "") || Objects.equals(password, "")) {
             throw new NullPointerException(errMsg);
         }
+    }
+
+    private Person match(Person source) throws InvocationTargetException, IllegalAccessException {
+        var current = personService.findById(source.getId()).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND)
+        );
+        var methods = current.getClass().getDeclaredMethods();
+        var namePerMethod = new HashMap<String, Method>();
+        for (var method : methods) {
+            var name = method.getName();
+            if (name.startsWith("get") || name.startsWith("set")) {
+                namePerMethod.put(name, method);
+            }
+        }
+        for (var name : namePerMethod.keySet()) {
+            if (name.startsWith("get")) {
+                var getMethod = namePerMethod.get(name);
+                var setMethod = namePerMethod.get(name.replace("get", "set"));
+                if (setMethod == null) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid properties mapping");
+                }
+                var newValue = getMethod.invoke(source);
+                if (newValue != null) {
+                    setMethod.invoke(current, newValue);
+                }
+            }
+        }
+        return current;
     }
 }
